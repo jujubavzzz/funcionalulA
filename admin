@@ -1,0 +1,244 @@
+export interface Cliente {
+  id: string;
+  nome: string;
+  email: string;
+  produtoComprado: string;
+  valorGasto: number;
+  dataCompra: string;
+}import React, { useState, useEffect } from "react";
+
+export interface Cliente {
+  id: string;
+  nome: string;
+  email: string;
+  produtoComprado: string;
+  valorGasto: number;
+  dataCompra: string;
+}
+
+export const AdminClientes = () => {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [mensagem, setMensagem] = useState("");
+
+  // Formulário
+  const [nome, setNome] = useState("");
+  const [email, setEmail] = useState("");
+  const [produto, setProduto] = useState("");
+  const [valor, setValor] = useState("");
+
+  // 1. Carrega vendas salvas localmente (Sincronização com a loja)
+  useEffect(() => {
+    const dadosSalvos = localStorage.getItem("clientes_cadastrados");
+    if (dadosSalvos) {
+      try {
+        setClientes(JSON.parse(dadosSalvos));
+      } catch (e) {
+        console.error("Erro ao carregar dados", e);
+      }
+    }
+  }, []);
+
+  // Atualiza o LocalStorage sempre que a lista mudar
+  const salvarListaLocal = (novaLista: Cliente[]) => {
+    setClientes(novaLista);
+    localStorage.setItem("clientes_cadastrados", JSON.stringify(novaLista));
+  };
+
+  // 2. Cadastro Manual de Cliente
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!nome || !email || !produto || !valor) {
+      setMensagem("Preencha todos os campos.");
+      return;
+    }
+
+    const novoCliente: Cliente = {
+      id: Date.now().toString(),
+      nome,
+      email,
+      produtoComprado: produto,
+      valorGasto: parseFloat(valor),
+      dataCompra: new Date().toLocaleDateString("pt-BR")
+    };
+
+    const listaAtualizada = [...clientes, novoCliente];
+    salvarListaLocal(listaAtualizada);
+
+    setMensagem("Cliente cadastrado com sucesso!");
+    setNome("");
+    setEmail("");
+    setProduto("");
+    setValor("");
+  };
+
+  // 3. Salvar/Exportar em TXT (Formato estruturado para reabertura)
+  const handleExportarTXT = () => {
+    if (clientes.length === 0) {
+      setMensagem("Nenhum cliente cadastrado para exportar.");
+      return;
+    }
+
+    // Exporta em JSON formatado dentro de um arquivo .txt
+    const conteudo = JSON.stringify(clientes, null, 2);
+    const blob = new Blob([conteudo], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "relatorio_clientes.txt";
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    setMensagem("Arquivo exportado com sucesso!");
+  };
+
+  // 4. Importar TXT para restaurar os dados no futuro
+  const handleImportarTXT = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const conteudo = event.target?.result as string;
+        const dadosImportados: Cliente[] = JSON.parse(conteudo);
+        
+        if (Array.isArray(dadosImportados)) {
+          salvarListaLocal(dadosImportados);
+          setMensagem("Dados importados e restaurados com sucesso!");
+        } else {
+          setMensagem("Formato de arquivo inválido.");
+        }
+      } catch (err) {
+        setMensagem("Erro ao ler o arquivo TXT.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Painel do Administrador - Clientes</h1>
+
+      {mensagem && (
+        <div className="p-3 mb-4 text-sm bg-blue-100 text-blue-800 rounded">
+          {mensagem}
+        </div>
+      )}
+
+      {/* Formulário de Cadastro */}
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded shadow">
+        <input
+          type="text"
+          placeholder="Nome do Cliente"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          className="border p-2 rounded"
+        />
+        <input
+          type="email"
+          placeholder="E-mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="border p-2 rounded"
+        />
+        <input
+          type="text"
+          placeholder="O que comprou?"
+          value={produto}
+          onChange={(e) => setProduto(e.target.value)}
+          className="border p-2 rounded"
+        />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="Quanto gastou (R$)"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          className="border p-2 rounded"
+        />
+        <button type="submit" className="col-span-2 bg-green-600 text-white p-2 rounded hover:bg-green-700">
+          Cadastrar Cliente
+        </button>
+      </form>
+
+      {/* Ações de Arquivo */}
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={handleExportarTXT}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Salvar/Exportar TXT
+        </button>
+
+        <label className="bg-gray-600 text-white px-4 py-2 rounded cursor-pointer hover:bg-gray-700">
+          Abrir / Carregar TXT
+          <input
+            type="file"
+            accept=".txt"
+            onChange={handleImportarTXT}
+            className="hidden"
+          />
+        </label>
+      </div>
+
+      {/* Tabela de Clientes */}
+      <table className="w-full border-collapse border border-gray-300">
+        <thead>
+          <tr className="bg-gray-200">
+            <th className="border p-2">Nome</th>
+            <th className="border p-2">E-mail</th>
+            <th className="border p-2">Produto</th>
+            <th className="border p-2">Valor</th>
+            <th className="border p-2">Data</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clientes.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="text-center p-4">Nenhum cliente registrado.</td>
+            </tr>
+          ) : (
+            clientes.map((c) => (
+              <tr key={c.id} className="text-center">
+                <td className="border p-2">{c.nome}</td>
+                <td className="border p-2">{c.email}</td>
+                <td className="border p-2">{c.produtoComprado}</td>
+                <td className="border p-2">R$ {c.valorGasto.toFixed(2)}</td>
+                <td className="border p-2">{c.dataCompra}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+};// Executar este código quando a compra for confirmada na loja:
+const registrarCompraNaAdmin = (nomeCliente: string, emailCliente: string, produto: string, valor: number) => {
+  const comprasExistentes = JSON.parse(localStorage.getItem("clientes_cadastrados") || "[]");
+
+  const novaCompra = {
+    id: Date.now().toString(),
+    nome: nomeCliente,
+    email: emailCliente,
+    produtoComprado: produto,
+    valorGasto: valor,
+    dataCompra: new Date().toLocaleDateString("pt-BR")
+  };
+
+  comprasExistentes.push(novaCompra);
+  localStorage.setItem("clientes_cadastrados", JSON.stringify(comprasExistentes));
+};import { Link } from "react-router-dom";
+
+export const Navbar = () => {
+  return (
+    <nav className="flex gap-6 bg-slate-900 text-white p-4">
+      <Link to="/" className="hover:underline">Home</Link>
+      <Link to="/loja" className="hover:underline">Loja</Link>
+      <Link to="/admin" className="hover:underline font-bold text-yellow-400">
+        Painel Admin
+      </Link>
+    </nav>
+  );
+};
