@@ -1,0 +1,1 @@
+Coloque nesta pasta os arquivos de migração SQL reais do seu projeto (por exemplo, 0001_cria_tabelas.sql). Não use este arquivo .txt como migração; ele é apenas uma orientação e pode ser removido depois de adicionar os arquivos .sql.
